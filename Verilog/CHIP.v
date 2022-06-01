@@ -19,6 +19,27 @@ module CHIP(clk,
     // For mem_I
     output [31:0] mem_addr_I ;
     input  [31:0] mem_rdata_I;
+
+    // TODO: add opcode parameters
+    // required: 
+    // - auipc, jal, jalr, beq, lw, sw
+    // - addi, slti, add, sub, xor, mul
+    // bonus:
+    // - ...
+    parameter AUIPC
+    parameter JAL
+    parameter JALR
+    parameter BEQ
+    parameter LW
+    parameter SW
+    parameter ADDI
+    parameter SLTI
+    parameter ADD
+    parameter SUB
+    parameter XOR
+    parameter MUL
+
+    // TODO: add FSM state parameter
     
     //---------------------------------------//
     // Do not modify this part!!!            //
@@ -33,6 +54,16 @@ module CHIP(clk,
     //---------------------------------------//
 
     // Todo: other wire/reg
+    // for instruction decoding
+    wire [6:0] opcode;
+    wire [4:0] rd;
+    wire [2:0] funct3;
+    wire [4:0] rs1;
+    wire [4:0] rs2;
+    wire [6:0] funct3;
+
+    // state for mul operation FSM
+    reg  [999:0] state, next_state;
 
     //---------------------------------------//
     // Do not modify this part!!!            //
@@ -50,6 +81,23 @@ module CHIP(clk,
 
     // Todo: any combinational/sequential circuit
 
+    // wire assignments
+    assign opcode = mem_rdata_I[6:0];
+    assign rd     = mem_rdata_I[11:7];
+    assign funct3 = mem_rdata_I[14:12];
+    assign rs1    = mem_rdata_I[19:15];
+    assign rs2    = mem_rdata_I[24:20];
+    assign funct7 = mem_rdata_I[31:25];
+
+    // combinational part
+    always @(*) begin
+        // decode instruction
+	case(opcode)
+	    default:
+	endcase
+    end
+
+    // sequential part
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             PC <= 32'h00010000; // Do not modify this value!!!
