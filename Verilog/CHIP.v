@@ -26,18 +26,23 @@ module CHIP(clk,
     // - addi, slti, add, sub, xor, mul
     // bonus:
     // - ...
-    parameter AUIPC
-    parameter JAL
-    parameter JALR
-    parameter BEQ
-    parameter LW
-    parameter SW
-    parameter ADDI
-    parameter SLTI
-    parameter ADD
-    parameter SUB
-    parameter XOR
-    parameter MUL
+
+    parameter AUIPC = 7'b0010111;
+    parameter JAL = 7'b1101111;
+    parameter JALR = 7'b1100111;
+    parameter BEQ = 7'b1100011;
+    parameter LW = 7'b0000011;
+    parameter SW = 7'b0100011;
+
+    // 
+    parameter ADDI = 7'b0010011;
+    parameter SLTI = 7'b0010011;
+
+    //  calc
+    parameter ADD = 7'b0110011;
+    parameter SUB = 7'b0110011;
+    parameter XOR = 7'b0110011;
+    parameter MUL = 7'b0110011;
 
     // TODO: add FSM state parameter
     
@@ -63,7 +68,9 @@ module CHIP(clk,
     wire [6:0] funct3;
 
     // state for mul operation FSM
-    reg  [999:0] state, next_state;
+    // state 0 for general case, 1 for mulDiv
+
+    reg state, next_state;
 
     //---------------------------------------//
     // Do not modify this part!!!            //
