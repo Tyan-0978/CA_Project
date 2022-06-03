@@ -202,13 +202,26 @@ module CHIP(clk,
         // end
 
         IMM:begin
-            if(funct3 == 3'b000) begin
-                rd_data = rs1_data + mem_rdata_I[31:20];
-            end
-            else begin
-                if(rs1_data < mem_rdata_I[31:20]) rd_data = 32'd1;
-                else rd_data = 32'd0;
-            end
+	    case(funct3)
+	        // addi
+                3'b000: rd_data = rs1_data + mem_rdata_I[31:20];
+
+		// slti
+		3'b010: begin
+                    if(rs1_data < mem_rdata_I[31:20]) 
+		        rd_data = 32'd1;
+                    else 
+		        rd_data = 32'd0;
+		end
+
+		// slli, shift left
+		3'b001: rd_data = rs1_data << rs2;
+
+		// srli, shift right
+		3'b101: rd_data = rs1_data >> rs2;
+
+		default: rd_data = 32'd0;
+	    endcase
         end
 
         MATH:begin
