@@ -68,13 +68,14 @@ module CHIP(clk,
     // wire [4:0] decode_rs2;
     wire [6:0] funct7;
     // Imm
-    wire signed[20:0] jal_imm;
+    wire [20:0] jal_imm;
     wire [31:0] auipc_imm;
-    wire signed[12:0] beq_imm;
-    wire signed[11:0] jalr_imm;
+    wire [12:0] beq_imm;
+    wire [11:0] jalr_imm;
     wire [11:0] sw_imm;
-    wire signed[32:0] signed_PC;
     wire signed[32:0] jal_des;
+    wire signed[32:0] beq_des;
+    wire signed[32:0] jalr_des;
 
     //----------------------//
     wire [1:0] mode;        //
@@ -130,9 +131,7 @@ module CHIP(clk,
     assign jal_imm[11] = mem_rdata_I[20];
     assign jal_imm[19:12] = mem_rdata_I[19:12];
     assign jal_imm[0] = 0;
-
-    assign signed_PC = PC;
-    assign jal_des = PC + jal_imm;
+    assign jal_des = $signed(PC) + $signed(jal_imm);
     // auipc
     assign auipc_imm[31:12] = mem_rdata_I[31:12];
     assign auipc_imm[11:0] = 12'd0;
@@ -142,11 +141,13 @@ module CHIP(clk,
     assign beq_imm[10:5] = mem_rdata_I[30:25];
     assign beq_imm[4:1] = mem_rdata_I[11:8];
     assign beq_imm[0] = mem_rdata_I[0];
+    assign beq_des = $signed(PC) + $signed(beq_imm);
     // sw
     assign sw_imm[11:5] = mem_rdata_I[31:25];
     assign sw_imm[4:0] = mem_rdata_I[11:7];
-
+    // jalr
     assign jalr_imm = mem_rdata_I[31:20];
+    assign jalr_des = $signed(rs1_data) + $signed(jalr_imm);
     // ===============================
 
     // ============= OUTPUT ============
@@ -242,8 +243,8 @@ module CHIP(clk,
     // only for PC_nxt
     case(opcode)
         JAL:    PC_nxt = jal_des[31:0];
-        JALR:   PC_nxt = rs1_data + jalr_imm;
-        BEQ:    PC_nxt = PC + beq_imm;
+        JALR:   PC_nxt = jalr_imm[31:0];
+        BEQ:    PC_nxt = beq_des[31:0];
         //  MUL
         MATH: begin
             if (funct3 == 3'b000 && funct7 == 7'b0000001) begin
