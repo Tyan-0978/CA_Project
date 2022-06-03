@@ -30,7 +30,10 @@ module CHIP(clk,
     parameter AUIPC = 7'b0010111;
     parameter JAL = 7'b1101111;
     parameter JALR = 7'b1100111;
-    parameter BEQ = 7'b1100011;
+
+    // branch
+    parameter BRANCH = 7'b1100011;
+
     parameter LW = 7'b0000011;
     parameter SW = 7'b0100011;
 
@@ -70,12 +73,13 @@ module CHIP(clk,
     // Imm
     wire [20:0] jal_imm;
     wire [31:0] auipc_imm;
-    wire [12:0] beq_imm;
+    wire [12:0] branch_imm;
     wire [11:0] jalr_imm;
     wire [11:0] sw_imm;
     wire signed[32:0] jal_des;
-    wire signed[32:0] beq_des;
     wire signed[32:0] jalr_des;
+    wire signed[32:0] beq_des;
+    wire signed[32:0] bge_des;
 
     //----------------------//
     wire [1:0] mode;        //
@@ -124,7 +128,7 @@ module CHIP(clk,
     assign rs2    = mem_rdata_I[24:20];
     assign funct7 = mem_rdata_I[31:25];
 
-    // ============= Imm ============
+    // ============= Immediate ============
     // jal
     assign jal_imm[20] = mem_rdata_I[31];
     assign jal_imm[10:1] = mem_rdata_I[30:21];
@@ -132,22 +136,24 @@ module CHIP(clk,
     assign jal_imm[19:12] = mem_rdata_I[19:12];
     assign jal_imm[0] = 0;
     assign jal_des = $signed(PC) + $signed(jal_imm);
-    // auipc
-    assign auipc_imm[31:12] = mem_rdata_I[31:12];
-    assign auipc_imm[11:0] = 12'd0;
-    // beq
-    assign beq_imm[12] = mem_rdata_I[31];
-    assign beq_imm[11] = mem_rdata_I[7];
-    assign beq_imm[10:5] = mem_rdata_I[30:25];
-    assign beq_imm[4:1] = mem_rdata_I[11:8];
-    assign beq_imm[0] = mem_rdata_I[0];
-    assign beq_des = $signed(PC) + $signed(beq_imm);
-    // sw
-    assign sw_imm[11:5] = mem_rdata_I[31:25];
-    assign sw_imm[4:0] = mem_rdata_I[11:7];
     // jalr
     assign jalr_imm = mem_rdata_I[31:20];
     assign jalr_des = $signed(rs1_data) + $signed(jalr_imm);
+    // auipc
+    assign auipc_imm[31:12] = mem_rdata_I[31:12];
+    assign auipc_imm[11:0] = 12'd0;
+    // branch immediate
+    assign branch_imm[12] = mem_rdata_I[31];
+    assign branch_imm[11] = mem_rdata_I[7];
+    assign branch_imm[10:5] = mem_rdata_I[30:25];
+    assign branch_imm[4:1] = mem_rdata_I[11:8];
+    assign branch_imm[0] = mem_rdata_I[0];
+    // beq, bge destination
+    assign beq_des = (rs1_data == rs2_data) ? ($signed(PC) + $signed(branch_imm)) : PC + 4;
+    assign bge_des = (rs1_data >= rs2_data) ? ($signed(PC) + $signed(branch_imm)) : PC + 4;
+    // sw
+    assign sw_imm[11:5] = mem_rdata_I[31:25];
+    assign sw_imm[4:0] = mem_rdata_I[11:7];
     // ===============================
 
     // ============= OUTPUT ============
@@ -191,7 +197,7 @@ module CHIP(clk,
             rd_data = PC + 32'd4;
         end
 
-        // BEQ:begin
+        // BRANCH:begin
         // end
 
         LW:begin
@@ -257,7 +263,18 @@ module CHIP(clk,
     case(opcode)
         JAL:    PC_nxt = jal_des[31:0];
         JALR:   PC_nxt = jalr_imm[31:0];
-        BEQ:    PC_nxt = beq_des[31:0];
+	BRANCH: begin
+	    case(funct3)
+	        // beq
+		PC_nxt = beq_des[31:0];
+
+		// bge
+		PC_nxt = bge_des[31:0];
+
+		default: PC_nxt = PC + 4;
+	    endcase
+	end
+
         //  MUL
         MATH: begin
             if (funct3 == 3'b000 && funct7 == 7'b0000001) begin
