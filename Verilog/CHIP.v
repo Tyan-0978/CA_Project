@@ -51,7 +51,7 @@ module CHIP(clk,
     // Do not modify this part!!!            //
     // Exception: You may change wire to reg //
     reg    [31:0] PC          ;              //
-    wire   [31:0] PC_nxt      ;              //
+    reg    [31:0] PC_nxt      ;              //
     reg           regWrite    ;              //
     wire   [ 4:0] rs1, rs2, rd;              //
     wire   [31:0] rs1_data    ;              //
@@ -80,12 +80,9 @@ module CHIP(clk,
     wire [63:0] mul_out;    //
     //----------------------//
 
-
-
     // state for mul operation FSM
     // state 0 for general case, 1 for mulDiv
-    
-    reg state, next_state;
+    reg isMUL, next_isMUL;
 
     //---------------------------------------//
     // Do not modify this part!!!            //
@@ -106,7 +103,7 @@ module CHIP(clk,
         .rst_n(rst_n),                       //
         .valid(valid),                       //
         .ready(ready),                       //
-        .mode(mode)                          //
+        .mode(mode),                         //
         .in_A(rs1_data),                     //
         .in_B(rs2_data),                     //
         .out(mul_out));                      //
@@ -149,12 +146,12 @@ module CHIP(clk,
     reg [31:0] Addr_Data;
     assign mem_wen_D = (opcode == SW)? 1 : 0;
     assign mem_addr_D = Addr_Data;
-    assign mem_rdata_D = (opcode == SW)? rs2_data : 32'd0;
+    assign mem_wdata_D = (opcode == SW)? rs2_data : 32'd0;
     assign mem_addr_I = PC;
 
 
     // ============= MUL ============
-    assign valid = (opcode == MATH && funct3==3'b000 && funct7=7'd1)? 1:0;
+    assign valid = ((opcode == MATH && funct3==3'b000) && funct7==7'd1)? 1:0;
     assign mode = 2'b01;
 
 
@@ -166,12 +163,9 @@ module CHIP(clk,
 
     // mem_addr_D
     case(opcode)
-        LW:
-            Addr_Data = rs1_data + mem_rdata_I[31:20];
-        SW:
-            Addr_Data = rs1_data + sw_imm;
-        default:
-            Addr_Data = 0;
+        LW: Addr_Data = rs1_data + mem_rdata_I[31:20];
+        SW: Addr_Data = rs1_data + sw_imm;
+        default: Addr_Data = 0;
     endcase
     // only for rd_data
 	case(opcode)
@@ -210,16 +204,16 @@ module CHIP(clk,
 
         MATH:begin
             case(funct3)
-                3'b000: begin
+                3'b000:begin
                     case(funct7)
                         // ADD
                         7'b0000000: rd_data = rs1_data + rs2_data;
                         // SUB
                         7'b0100000: rd_data = rs1_data - rs2_data;
                         // MUL
-                        7'b0000001: rd_data = mul_out;
-                        default:
-                            rd_data = 32'd0;
+                        7'b0000001: rd_data = mul_out[31:0];
+                        default: rd_data = 32'd0;
+                    endcase
                 end
 
                 3'b100:begin
@@ -229,6 +223,7 @@ module CHIP(clk,
                 default:begin
                     rd_data = 32'd0;
                 end
+            endcase
         end
 
 	    default:begin
@@ -269,6 +264,19 @@ module CHIP(clk,
         default: regWrite = 1;
     endcase
 
+    // State isMUL
+    case(opcode)
+        MATH: begin
+            if (funct3 == 3'b000 && funct7 == 7'b0000001) begin
+                if(ready) next_isMUL = 1;
+                else next_isMUL = 0;
+            end
+            else begin
+                next_isMUL = 0;
+            end
+        end
+        default: next_isMUL = 0;
+    endcase
 
     end
 
@@ -279,11 +287,11 @@ module CHIP(clk,
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             PC <= 32'h00010000; // Do not modify this value!!!
-            
+            isMUL <= 0;
         end
         else begin
             PC <= PC_nxt;
-            
+            isMUL <= next_isMUL;
         end
     end
 endmodule
