@@ -68,9 +68,10 @@ module CHIP(clk,
     // wire [4:0] decode_rs2;
     wire [6:0] funct7;
     // Imm
-    wire [20:0] jal_imm;
+    wire signed[20:0] jal_imm;
     wire [31:0] auipc_imm;
-    wire [12:0] beq_imm;
+    wire signed[12:0] beq_imm;
+    wire signed[11:0] jalr_imm;
     wire [11:0] sw_imm;
 
     //----------------------//
@@ -139,6 +140,8 @@ module CHIP(clk,
     // sw
     assign sw_imm[11:5] = mem_rdata_I[31:25];
     assign sw_imm[4:0] = mem_rdata_I[11:7];
+
+    assign jalr_imm = mem_rdata_I[31:20];
     // ===============================
 
     // ============= OUTPUT ============
@@ -233,8 +236,8 @@ module CHIP(clk,
 
     // only for PC_nxt
     case(opcode)
-        JAL:    PC_nxt = jal_imm;
-        JALR:   PC_nxt = rs1_data + mem_rdata_I[31:20];
+        JAL:    PC_nxt = PC + jal_imm;
+        JALR:   PC_nxt = rs1_data + jalr_imm;
         BEQ:    PC_nxt = PC + beq_imm;
         //  MUL
         MATH: begin
