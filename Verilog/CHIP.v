@@ -193,13 +193,13 @@ module CHIP(clk,
 
     always @(*) begin
 
-    // mem_addr_D
+    // for mem_addr_D
     case(opcode)
         LW: Addr_Data = rs1_data + mem_rdata_I[31:20];
         SW: Addr_Data = rs1_data + sw_imm;
         default: Addr_Data = 0;
     endcase
-    // only for rd_data
+    // for rd_data
 	case(opcode)
 
         AUIPC:begin
@@ -274,7 +274,7 @@ module CHIP(clk,
         end
 	endcase
 
-    // only for PC_nxt
+    // for PC_nxt
     case(opcode)
         JAL:    PC_nxt = jal_des[31:0];
         JALR:   PC_nxt = jalr_des[31:0];
@@ -302,7 +302,7 @@ module CHIP(clk,
         default: PC_nxt = PC + 4;
     endcase
 
-    // regWrite
+    // for regWrite
     case(opcode)
         AUIPC: regWrite = 1;
         JAL  : regWrite = 1;
