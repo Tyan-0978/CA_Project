@@ -33,6 +33,7 @@ module CHIP(clk,
 
     // branch
     parameter BRANCH = 7'b1100011;
+    // parameter BRANCH_(bge) = 7'b1100011;
 
     parameter LW = 7'b0000011;
     parameter SW = 7'b0100011;
@@ -164,11 +165,9 @@ module CHIP(clk,
     assign mem_wdata_D = (opcode == SW)? rs2_data : 32'd0;
     assign mem_addr_I = PC;
 
-
     // ============= MUL ============
     assign valid = ((opcode == MATH && funct3==3'b000) && funct7==7'd1)? 1:0;
     assign mode = 2'b01;
-
 
     //============================================
     //==========  combinational part  ============
@@ -212,21 +211,19 @@ module CHIP(clk,
 	        // addi
                 3'b000: rd_data = rs1_data + mem_rdata_I[31:20];
 
-		// slti
-		3'b010: begin
-                    if(rs1_data < mem_rdata_I[31:20]) 
-		        rd_data = 32'd1;
-                    else 
-		        rd_data = 32'd0;
-		end
+		    // slti
+		        3'b010: begin
+                    if(rs1_data < mem_rdata_I[31:20])  rd_data = 32'd1;
+                    else  rd_data = 32'd0;
+		        end
 
-		// slli, shift left
-		3'b001: rd_data = rs1_data << rs2;
+		    // slli, shift left
+		        3'b001: rd_data = rs1_data << rs2;
 
-		// srli, shift right
-		3'b101: rd_data = rs1_data >> rs2;
+		    // srli, shift right
+		        3'b101: rd_data = rs1_data >> rs2;
 
-		default: rd_data = 32'd0;
+		        default: rd_data = 32'd0;
 	    endcase
         end
 
@@ -262,17 +259,16 @@ module CHIP(clk,
     // only for PC_nxt
     case(opcode)
         JAL:    PC_nxt = jal_des[31:0];
-        JALR:   PC_nxt = jalr_imm[31:0];
-	BRANCH: begin
-	    case(funct3)
-	        // beq
-		PC_nxt = beq_des[31:0];
+        JALR:   PC_nxt = jalr_des[31:0];
+	    BRANCH: begin
+    	    case(funct3)
+    	    // beq
+                3'b000: PC_nxt = beq_des[31:0];
+    		// bge
+                3'b101: PC_nxt = bge_des[31:0];
 
-		// bge
-		PC_nxt = bge_des[31:0];
-
-		default: PC_nxt = PC + 4;
-	    endcase
+    		    default: PC_nxt = PC + 4;
+    	    endcase
 	end
 
         //  MUL
