@@ -20,12 +20,17 @@ module CHIP(clk,
     output [31:0] mem_addr_I ;
     input  [31:0] mem_rdata_I;
 
+
+    //============================================
+    //============  Opcode Decode  ===============
+    //============================================
+
     // TODO: add opcode parameters
     // required: 
     // - auipc, jal, jalr, beq, lw, sw
     // - addi, slti, add, sub, xor, mul
     // bonus:
-    // - ...
+    // - bge, slli, srli
 
     parameter AUIPC = 7'b0010111;
     parameter JAL = 7'b1101111;
@@ -33,7 +38,8 @@ module CHIP(clk,
 
     // branch
     parameter BRANCH = 7'b1100011;
-    // parameter BRANCH_(bge) = 7'b1100011;
+    // parameter BEQ = 7'b1100011;
+    // parameter BGE = 7'b1100011;
 
     parameter LW = 7'b0000011;
     parameter SW = 7'b0100011;
@@ -41,6 +47,8 @@ module CHIP(clk,
     // use Imm
     // parameter ADDI = 7'b0010011;
     // parameter SLTI = 7'b0010011;
+    // parameter SLLI = 7'b0010011;
+    // parameter SRLI = 7'b0010011;
     parameter IMM = 7'b0010011;
 
     //  calc
@@ -50,6 +58,9 @@ module CHIP(clk,
     // parameter MUL = 7'b0110011;
     parameter MATH = 7'b0110011;
 
+    //============================================
+    //============  Wire and Reg   ===============
+    //============================================
 
     //---------------------------------------//
     // Do not modify this part!!!            //
@@ -58,20 +69,21 @@ module CHIP(clk,
     reg    [31:0] PC_nxt      ;              //
     reg           regWrite    ;              //
     wire   [ 4:0] rs1, rs2, rd;              //
-    wire signed  [31:0] rs1_data    ;              //
-    wire signed  [31:0] rs2_data    ;              //
-    reg  signed  [31:0] rd_data     ;              //
+    wire signed  [31:0] rs1_data    ;        //
+    wire signed  [31:0] rs2_data    ;        //
+    reg  signed  [31:0] rd_data     ;        //
     //---------------------------------------//
 
     // Todo: other wire/reg
     // for instruction decoding
     wire [6:0] opcode;
-    // wire [4:0] decode_rd;
     wire [2:0] funct3;
+    wire [6:0] funct7;
+    // wire [4:0] decode_rd;
     // wire [4:0] decode_rs1;
     // wire [4:0] decode_rs2;
-    wire [6:0] funct7;
-    // Imm
+
+    // Imm calculation
     wire signed [20:0] jal_imm;
     wire signed [31:0] auipc_imm;
     wire signed [12:0] branch_imm;
@@ -82,6 +94,7 @@ module CHIP(clk,
     wire signed [32:0] beq_des;
     wire signed [32:0] bge_des;
 
+    // For Mul
     //----------------------//
     wire [1:0] mode;        //
     wire valid;             //
@@ -91,7 +104,11 @@ module CHIP(clk,
 
     // state for mul operation FSM
     // state 0 for general case, 1 for mulDiv
-    reg isMUL, next_isMUL;
+    // reg isMUL, next_isMUL;
+
+    //============================================
+    //============  Call Module   ================
+    //============================================
 
     //---------------------------------------//
     // Do not modify this part!!!            //
@@ -118,8 +135,9 @@ module CHIP(clk,
         .out(mul_out));                      //
     //---------------------------------------//
 
-
-    // Todo: any combinational/sequential circuit
+    //============================================
+    //=======  Assign value to reg/ wire  ========
+    //============================================
 
     // wire assignments
     assign opcode = mem_rdata_I[6:0];
@@ -170,7 +188,7 @@ module CHIP(clk,
     assign mode = 2'b00;
 
     //============================================
-    //==========  combinational part  ============
+    //==========  Combinational Part  ============
     //============================================
 
     always @(*) begin
@@ -286,37 +304,43 @@ module CHIP(clk,
 
     // regWrite
     case(opcode)
-        SW: regWrite = 0;
+        AUIPC: regWrite = 1;
+        JAL  : regWrite = 1;
+        JALR : regWrite = 1;
+        LW   : regWrite = 1;
+        IMM  : regWrite = 1;
         MATH: begin
-            if (funct3 == 3'b000 && funct7 == 7'b0000001) begin
-                if(ready) regWrite = 1;
-                else regWrite = 0;
+            if (funct3 == 3'b000 && funct7 == 7'b0000001) begin // mul
+                 if(ready) 
+                    regWrite = 1;
+                 else 
+                    regWrite = 0;
             end
             else begin
                 regWrite = 1;
             end
         end
-        default: regWrite = 1;
+        default: regWrite = 0;
     endcase
 
     // State isMUL
-    case(opcode)
-        MATH: begin
-            if (funct3 == 3'b000 && funct7 == 7'b0000001) begin
-                if(ready) next_isMUL = 0;
-                else next_isMUL = 1;
-            end
-            else begin
-                next_isMUL = 0;
-            end
-        end
-        default: next_isMUL = 0;
-    endcase
+    // case(opcode)
+    //     MATH: begin
+    //         if (funct3 == 3'b000 && funct7 == 7'b0000001) begin
+    //             if(ready) next_isMUL = 0;
+    //             else next_isMUL = 1;
+    //         end
+    //         else begin
+    //             next_isMUL = 0;
+    //         end
+    //     end
+    //     default: next_isMUL = 0;
+    // endcase
 
     end
 
     //============================================
-    //============  sequential part  =============
+    //============  Sequential Part  =============
     //============================================
 
     always @(posedge clk or negedge rst_n) begin
@@ -331,7 +355,9 @@ module CHIP(clk,
     end
 endmodule
 
-
+    //============================================
+    //=============   Module Part   ==============
+    //============================================
 
 module reg_file(clk, rst_n, wen, a1, a2, aw, d, q1, q2);
 
