@@ -286,17 +286,23 @@ module CHIP(clk,
 
     // regWrite
     case(opcode)
-        SW: regWrite = 0;
+        AUIPC: regWrite = 1;
+	JAL  : regWrite = 1;
+	JALR : regWrite = 1;
+	LW   : regWrite = 1;
+	IMM  : regWrite = 1;
         MATH: begin
-            if (funct3 == 3'b000 && funct7 == 7'b0000001) begin
-                if(ready) regWrite = 1;
-                else regWrite = 0;
+            if (funct3 == 3'b000 && funct7 == 7'b0000001) begin // mul
+                if(ready) 
+		    regWrite = 1;
+                else 
+		    regWrite = 0;
             end
             else begin
                 regWrite = 1;
             end
         end
-        default: regWrite = 1;
+        default: regWrite = 0;
     endcase
 
     // State isMUL
