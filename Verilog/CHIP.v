@@ -346,11 +346,11 @@ module CHIP(clk,
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             PC <= 32'h00010000; // Do not modify this value!!!
-            isMUL <= 0;
+            // isMUL <= 0;
         end
         else begin
             PC <= PC_nxt;
-            isMUL <= next_isMUL;
+            // isMUL <= next_isMUL;
         end
     end
 endmodule
