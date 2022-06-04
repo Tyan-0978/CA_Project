@@ -58,9 +58,9 @@ module CHIP(clk,
     reg    [31:0] PC_nxt      ;              //
     reg           regWrite    ;              //
     wire   [ 4:0] rs1, rs2, rd;              //
-    wire   [31:0] rs1_data    ;              //
-    wire   [31:0] rs2_data    ;              //
-    reg    [31:0] rd_data     ;              //
+    wire signed  [31:0] rs1_data    ;              //
+    wire signed  [31:0] rs2_data    ;              //
+    reg  signed  [31:0] rd_data     ;              //
     //---------------------------------------//
 
     // Todo: other wire/reg
@@ -72,15 +72,15 @@ module CHIP(clk,
     // wire [4:0] decode_rs2;
     wire [6:0] funct7;
     // Imm
-    wire [20:0] jal_imm;
-    wire [31:0] auipc_imm;
-    wire [12:0] branch_imm;
-    wire [11:0] jalr_imm;
-    wire [11:0] sw_imm;
-    wire signed[32:0] jal_des;
-    wire signed[32:0] jalr_des;
-    wire signed[32:0] beq_des;
-    wire signed[32:0] bge_des;
+    wire signed [20:0] jal_imm;
+    wire signed [31:0] auipc_imm;
+    wire signed [12:0] branch_imm;
+    wire signed [11:0] jalr_imm;
+    wire signed [11:0] sw_imm;
+    wire signed [32:0] jal_des;
+    wire signed [32:0] jalr_des;
+    wire signed [32:0] beq_des;
+    wire signed [32:0] bge_des;
 
     //----------------------//
     wire [1:0] mode;        //
@@ -136,10 +136,10 @@ module CHIP(clk,
     assign jal_imm[11] = mem_rdata_I[20];
     assign jal_imm[19:12] = mem_rdata_I[19:12];
     assign jal_imm[0] = 0;
-    assign jal_des = $signed(PC) + $signed(jal_imm);
+    assign jal_des = $signed(PC) + jal_imm;
     // jalr
     assign jalr_imm = mem_rdata_I[31:20];
-    assign jalr_des = $signed(rs1_data) + $signed(jalr_imm);
+    assign jalr_des = rs1_data + jalr_imm;
     // auipc
     assign auipc_imm[31:12] = mem_rdata_I[31:12];
     assign auipc_imm[11:0] = 12'd0;
@@ -148,10 +148,10 @@ module CHIP(clk,
     assign branch_imm[11] = mem_rdata_I[7];
     assign branch_imm[10:5] = mem_rdata_I[30:25];
     assign branch_imm[4:1] = mem_rdata_I[11:8];
-    assign branch_imm[0] = mem_rdata_I[0];
+    assign branch_imm[0] = 0;
     // beq, bge destination
-    assign beq_des = (rs1_data == rs2_data) ? ($signed(PC) + $signed(branch_imm)) : PC + 4;
-    assign bge_des = (rs1_data >= rs2_data) ? ($signed(PC) + $signed(branch_imm)) : PC + 4;
+    assign beq_des = (rs1_data == rs2_data) ? ($signed(PC) + branch_imm) : PC + 4;
+    assign bge_des = (rs1_data >= rs2_data) ? ($signed(PC) + branch_imm) : PC + 4;
     // sw
     assign sw_imm[11:5] = mem_rdata_I[31:25];
     assign sw_imm[4:0] = mem_rdata_I[11:7];
@@ -167,7 +167,7 @@ module CHIP(clk,
 
     // ============= MUL ============
     assign valid = ((opcode == MATH && funct3==3'b000) && funct7==7'd1)? 1:0;
-    assign mode = 2'b01;
+    assign mode = 2'b00;
 
     //============================================
     //==========  combinational part  ============
@@ -209,7 +209,7 @@ module CHIP(clk,
         IMM:begin
 	    case(funct3)
 	        // addi
-                3'b000: rd_data = rs1_data + mem_rdata_I[31:20];
+                3'b000: rd_data = rs1_data + $signed(mem_rdata_I[31:20]);
 
 		    // slti
 		        3'b010: begin
@@ -303,8 +303,8 @@ module CHIP(clk,
     case(opcode)
         MATH: begin
             if (funct3 == 3'b000 && funct7 == 7'b0000001) begin
-                if(ready) next_isMUL = 1;
-                else next_isMUL = 0;
+                if(ready) next_isMUL = 0;
+                else next_isMUL = 1;
             end
             else begin
                 next_isMUL = 0;
